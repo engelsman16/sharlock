@@ -67,12 +67,12 @@ def _matches(values: list[Any], op: str, threshold: Any) -> list[Any]:
 
 def _default_rules_path() -> Path:
     with importlib.resources.as_file(
-        importlib.resources.files("sharlock").joinpath("../../rules/default.yaml")
+        importlib.resources.files("sharlock").joinpath("../rules/default.yaml")
     ) as p:
         if p.exists():
             return p
     # fallback: look relative to this file (works in editable installs)
-    candidate = Path(__file__).parent.parent.parent.parent / "rules" / "default.yaml"
+    candidate = Path(__file__).parent.parent.parent / "rules" / "default.yaml"
     if candidate.exists():
         return candidate
     raise FileNotFoundError("Could not locate rules/default.yaml")

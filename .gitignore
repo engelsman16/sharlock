@@ -32,4 +32,4 @@ htmlcov/
 
 # Output reports
 *.html
-!src/sharlock/report/templates/*.html
+!sharlock/report/templates/*.html
