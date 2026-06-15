@@ -181,3 +181,122 @@ def test_ilm_policy_missing_no_fire_without_ilm_policies():
     # ilm_policies absent from data → ref_data is {} → all policies "missing"
     found = _eval(data)
     assert "ilm_policy_missing" in found
+
+
+def test_ilm_paused_fires():
+    data = {"ilm_status": {"operation_mode": "STOPPED"}}
+    found = _eval(data)
+    assert "ilm_paused" in found
+    assert found["ilm_paused"].severity == "warn"
+
+
+def test_ilm_paused_does_not_fire_when_running():
+    data = {"ilm_status": {"operation_mode": "RUNNING"}}
+    found = _eval(data)
+    assert "ilm_paused" not in found
+
+
+def test_high_segment_count_fires():
+    data = {
+        "indices_stats": {
+            "indices": {"my-index": {"primaries": {"segments": {"count": 40}}}}
+        }
+    }
+    found = _eval(data)
+    assert "high_segment_count" in found
+    assert found["high_segment_count"].severity == "warn"
+
+
+def test_high_segment_count_does_not_fire_below_threshold():
+    data = {
+        "indices_stats": {
+            "indices": {"my-index": {"primaries": {"segments": {"count": 10}}}}
+        }
+    }
+    found = _eval(data)
+    assert "high_segment_count" not in found
+
+
+def test_bulk_rejections_fires():
+    data = {
+        "nodes_stats": {
+            "nodes": {
+                "n1": {"thread_pool": {"bulk": {"rejected": 5}}}
+            }
+        }
+    }
+    found = _eval(data)
+    assert "bulk_rejections" in found
+    assert found["bulk_rejections"].severity == "critical"
+
+
+def test_bulk_rejections_does_not_fire_on_zero():
+    data = {
+        "nodes_stats": {
+            "nodes": {"n1": {"thread_pool": {"bulk": {"rejected": 0}}}}
+        }
+    }
+    found = _eval(data)
+    assert "bulk_rejections" not in found
+
+
+def test_ingest_failures_fires():
+    data = {
+        "nodes_stats": {
+            "nodes": {"n1": {"ingest": {"total": {"failed": 3}}}}
+        }
+    }
+    found = _eval(data)
+    assert "ingest_failures" in found
+    assert found["ingest_failures"].severity == "warn"
+
+
+def test_ingest_failures_does_not_fire_on_zero():
+    data = {
+        "nodes_stats": {
+            "nodes": {"n1": {"ingest": {"total": {"failed": 0}}}}
+        }
+    }
+    found = _eval(data)
+    assert "ingest_failures" not in found
+
+
+def test_fielddata_evictions_fires():
+    data = {
+        "fielddata_stats": {
+            "nodes": {"n1": {"indices": {"fielddata": {"evictions": 1}}}}
+        }
+    }
+    found = _eval(data)
+    assert "fielddata_evictions" in found
+    assert found["fielddata_evictions"].severity == "warn"
+
+
+def test_fielddata_evictions_does_not_fire_on_zero():
+    data = {
+        "fielddata_stats": {
+            "nodes": {"n1": {"indices": {"fielddata": {"evictions": 0}}}}
+        }
+    }
+    found = _eval(data)
+    assert "fielddata_evictions" not in found
+
+
+def test_dangling_indices_fires():
+    data = {"dangling_indices": {"dangling_indices": [{"index_name": "orphan-1"}]}}
+    found = _eval(data)
+    assert "dangling_indices" in found
+    assert found["dangling_indices"].severity == "info"
+
+
+def test_dangling_indices_does_not_fire_on_empty():
+    data = {"dangling_indices": {"dangling_indices": []}}
+    found = _eval(data)
+    assert "dangling_indices" not in found
+
+
+def test_deprecation_warnings_fires():
+    data = {"deprecation_info": {"index_settings": {"my-index": ["some-deprecation"]}}}
+    found = _eval(data)
+    assert "deprecation_warnings" in found
+    assert found["deprecation_warnings"].severity == "info"

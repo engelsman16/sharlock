@@ -13,9 +13,10 @@ def test_read_zip_returns_flat_dict():
     entries = read_zip(FIXTURE_ZIP)
     assert isinstance(entries, dict)
     assert len(entries) > 0
-    # All keys should be bare filenames (no directory prefix)
+    # Keys are paths relative to the top-level date-prefix directory;
+    # root files are bare names, commercial/ files retain their subdir prefix.
     for key in entries:
-        assert "/" not in key
+        assert not key.startswith("/"), f"Key should not be absolute: {key}"
 
 
 def test_read_zip_contains_expected_files():

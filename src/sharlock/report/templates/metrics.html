@@ -1,0 +1,311 @@
+<h2>Data Metrics</h2>
+
+{% set m = metrics %}
+
+<!-- 2a: Index Size Overview -->
+<div class="card">
+  <h3>Index Size Overview</h3>
+  {% if m.has_size %}
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortTable(this)">Index</th>
+        <th onclick="sortTable(this)">Docs</th>
+        <th onclick="sortTable(this)">Primary Size</th>
+        <th onclick="sortTable(this)">Total Size</th>
+        <th onclick="sortTable(this)">Shards</th>
+        <th onclick="sortTable(this)">Avg Shard Size</th>
+        <th>Flags</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in m.size_rows %}
+      <tr>
+        <td class="lc-mono">{{ row.name }}</td>
+        <td class="num">{{ row.doc_count_human }}</td>
+        <td class="num">{{ row.store_size }}</td>
+        <td class="num">{{ row.total_size }}</td>
+        <td class="num">{{ row.n_shards }}</td>
+        <td class="num">{{ row.avg_shard_size }}</td>
+        <td>
+          {% if row.shard_warn %}<span class="badge badge-yellow">Shard &gt;50 GB</span>{% endif %}
+          {% if row.shard_smell %}<span class="badge badge-gray">Too many small shards</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="na-text">indices_stats.json not available in this bundle.</p>
+  {% endif %}
+</div>
+
+<!-- 2b: Ingestion Throughput -->
+<div class="card">
+  <h3>Ingestion Throughput</h3>
+  {% if m.has_ingestion %}
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortTable(this)">Index</th>
+        <th onclick="sortTable(this)">Total Ops</th>
+        <th onclick="sortTable(this)">Indexing Time (ms)</th>
+        <th onclick="sortTable(this)">Ops/ms</th>
+        <th onclick="sortTable(this)">Merges</th>
+        <th onclick="sortTable(this)">Merge Time (ms)</th>
+        <th onclick="sortTable(this)">Refreshes</th>
+        <th onclick="sortTable(this)">Segments</th>
+        <th>Flags</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in m.ingestion_rows %}
+      <tr>
+        <td class="lc-mono">{{ row.name }}</td>
+        <td class="num">{{ row.index_total }}</td>
+        <td class="num">{{ row.index_time_ms }}</td>
+        <td class="num">{{ row.ops_per_ms }}</td>
+        <td class="num">{{ row.merge_count }}</td>
+        <td class="num">{{ row.merge_time_ms }}</td>
+        <td class="num">{{ row.refresh_count }}</td>
+        <td class="num">{{ row.seg_count }}</td>
+        <td>
+          {% if row.high_segs %}<span class="badge badge-yellow">High segment count</span>{% endif %}
+          {% if row.merge_pressure %}<span class="badge badge-yellow">Merge pressure</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="na-text">indices_stats.json not available in this bundle.</p>
+  {% endif %}
+</div>
+
+<!-- 2c: Shard Distribution -->
+<div class="card">
+  <h3>Shard Distribution</h3>
+  {% if m.has_shard_dist %}
+  {% if m.imbalanced %}
+  <div class="metrics-alert metrics-alert-warn" style="margin-bottom: 12px;">
+    Shard imbalance detected — balance ratio {{ m.balance_ratio }}× (threshold 1.5×).
+  </div>
+  {% endif %}
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortTable(this)">Node</th>
+        <th onclick="sortTable(this)">Total Shards</th>
+        <th onclick="sortTable(this)">Primary Shards</th>
+        <th onclick="sortTable(this)">Data Hosted</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in m.shard_dist_rows %}
+      <tr>
+        <td>{{ row.name }}</td>
+        <td class="num">{{ row.shard_count }}</td>
+        <td class="num">{{ row.primary_count }}</td>
+        <td class="num">{{ row.store_size }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="na-text">nodes_stats.json not available in this bundle.</p>
+  {% endif %}
+</div>
+
+<!-- 2d: Ingest Pipeline Map -->
+<div class="card">
+  <h3>Ingest Pipeline Map</h3>
+  {% if m.has_pipelines %}
+  {% set active_pipes = m.pipeline_rows | rejectattr("orphaned") | list %}
+  {% set orphan_pipes = m.pipeline_rows | selectattr("orphaned") | list %}
+  {% for row in active_pipes %}
+  <details style="margin-bottom: 8px;">
+    <summary style="padding: 8px 4px; font-weight: 600; color: var(--text);">
+      {{ row.name }}
+      <span style="color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 8px;">
+        {{ row.proc_count }} processors
+      </span>
+    </summary>
+    <div style="padding: 8px 0 4px 14px; font-size: 12px;">
+      <div style="color: var(--muted); margin-bottom: 6px;">
+        Chain: <span style="font-family: 'SF Mono','Fira Code',monospace; color: var(--text);">{{ row.proc_chain }}</span>
+      </div>
+      {% if row.description %}
+      <div style="color: var(--muted); margin-bottom: 6px;">{{ row.description }}</div>
+      {% endif %}
+      <div style="color: var(--muted);">Used by:
+        {% for idx in row.linked_indices %}
+        <span class="lc-mono" style="margin-left: 4px; background: rgba(255,255,255,.05); padding: 1px 6px; border-radius: 3px;">{{ idx }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  </details>
+  {% endfor %}
+  {% if orphan_pipes %}
+  <details style="margin-top: 12px;">
+    <summary style="color: var(--muted); padding: 6px 4px; font-size: 12px;">
+      Orphaned pipelines ({{ orphan_pipes | length }}) — not referenced by any index
+    </summary>
+    <table style="margin-top: 8px;">
+      <thead><tr><th>Pipeline</th><th>Processors</th><th>Chain</th></tr></thead>
+      <tbody>
+        {% for row in orphan_pipes %}
+        <tr>
+          <td class="lc-mono">{{ row.name }}</td>
+          <td class="num">{{ row.proc_count }}</td>
+          <td style="font-size: 12px; color: var(--muted);">{{ row.proc_chain }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endif %}
+  {% else %}
+  <p class="na-text">pipeline.json not available in this bundle.</p>
+  {% endif %}
+</div>
+
+<!-- 2e: Active Recoveries -->
+{% if m.has_recoveries %}
+<div class="card">
+  <h3>Active Recoveries</h3>
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortTable(this)">Index</th>
+        <th onclick="sortTable(this)">Shard</th>
+        <th onclick="sortTable(this)">Type</th>
+        <th onclick="sortTable(this)">Stage</th>
+        <th>Source → Target</th>
+        <th onclick="sortTable(this)">Progress</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in m.active_recoveries %}
+      <tr>
+        <td class="lc-mono">{{ r.index }}</td>
+        <td class="num">{{ r.shard }}</td>
+        <td>{{ r.type }}</td>
+        <td>{{ r.stage }}</td>
+        <td style="font-size: 12px; color: var(--muted);">{{ r.source }} → {{ r.target }}</td>
+        <td>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ r.pct }}%;"></div>
+          </div>
+          <span style="font-size: 11px; color: var(--muted);">{{ r.recovered }} / {{ r.total }} ({{ r.pct }}%)</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- 2f: Node Ingestion Pressure -->
+<div class="card">
+  <h3>Node Ingestion Pressure</h3>
+  {% if m.has_pressure %}
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortTable(this)">Node</th>
+        <th onclick="sortTable(this)">Bulk Rejected</th>
+        <th onclick="sortTable(this)">Write Rejected</th>
+        <th onclick="sortTable(this)">Ingest Failed</th>
+        <th onclick="sortTable(this)">Ingest Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in m.pressure_rows %}
+      <tr>
+        <td>{{ row.name }}</td>
+        <td>
+          {% if row.bulk_rejected > 0 %}<span class="badge badge-red">{{ row.bulk_rejected }}</span>
+          {% else %}0{% endif %}
+        </td>
+        <td>
+          {% if row.write_rejected > 0 %}<span class="badge badge-red">{{ row.write_rejected }}</span>
+          {% else %}0{% endif %}
+        </td>
+        <td>
+          {% if row.ingest_failed > 0 %}<span class="badge badge-yellow">{{ row.ingest_failed }}</span>
+          {% else %}0{% endif %}
+        </td>
+        <td class="num">{{ row.ingest_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="na-text">nodes_stats.json not available in this bundle.</p>
+  {% endif %}
+</div>
+
+<!-- 2g: Fielddata Usage -->
+<div class="card">
+  <h3>Fielddata Cache Usage</h3>
+  {% if m.has_fielddata %}
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortTable(this)">Node</th>
+        <th onclick="sortTable(this)">Cache Size</th>
+        <th onclick="sortTable(this)">Evictions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in m.fielddata_rows %}
+      <tr>
+        <td>{{ row.name }}</td>
+        <td class="num">{{ row.mem_size }}</td>
+        <td>
+          {% if row.has_evictions %}<span class="badge badge-yellow">{{ row.evictions }}</span>
+          {% else %}0{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="na-text">fielddata_stats.json not available in this bundle.</p>
+  {% endif %}
+</div>
+
+<!-- 2h: Segment Detail -->
+<div class="card">
+  <h3>Segment Detail</h3>
+  {% if m.has_segments %}
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortTable(this)">Index</th>
+        <th onclick="sortTable(this)">Segment Count</th>
+        <th onclick="sortTable(this)">Total Docs</th>
+        <th onclick="sortTable(this)">Segment Size</th>
+        <th onclick="sortTable(this)">Compound %</th>
+        <th>Flags</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in m.seg_rows %}
+      <tr>
+        <td class="lc-mono">{{ row.name }}</td>
+        <td class="num">{{ row.seg_count }}</td>
+        <td class="num">{{ row.total_docs }}</td>
+        <td class="num">{{ row.total_size }}</td>
+        <td class="num">{{ row.compound_pct }}%</td>
+        <td>
+          {% if row.high_segs %}<span class="badge badge-yellow">High segment count</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="na-text">segments.json not available in this bundle.</p>
+  {% endif %}
+</div>

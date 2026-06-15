@@ -8,6 +8,7 @@
 </div>
 {% else %}
 
+<!-- Tier Flow Diagram -->
 <div class="card">
   <h3>Tier Flow</h3>
   <div class="lc-swimlane">
@@ -17,7 +18,12 @@
       <div class="lc-lane-body">
         {% if lc.tier_buckets[tier] %}
           {% for idx in lc.tier_buckets[tier] %}
-          <div class="lc-index-card">{{ idx }}</div>
+          <div class="lc-index-card">
+            <div>{{ idx }}</div>
+            {% if lc.doc_by_index[idx] and lc.doc_by_index[idx] != "—" %}
+            <div style="color: var(--muted); font-size: 10px; margin-top: 2px;">{{ lc.doc_by_index[idx] }} docs</div>
+            {% endif %}
+          </div>
           {% endfor %}
         {% else %}
           <div class="lc-empty-lane">—</div>
@@ -29,6 +35,7 @@
   </div>
 </div>
 
+<!-- Per-index table -->
 <div class="card">
   <h3>Index Overview</h3>
   {% set managed_rows = lc.rows | selectattr("managed") | list %}
@@ -36,12 +43,14 @@
   <table>
     <thead>
       <tr>
-        <th>Index</th>
-        <th>Tier</th>
-        <th>ILM Policy</th>
-        <th>Phase</th>
-        <th>Step</th>
-        <th>Ingest Pipeline</th>
+        <th onclick="sortTable(this)">Index</th>
+        <th onclick="sortTable(this)">Tier</th>
+        <th onclick="sortTable(this)">ILM Policy</th>
+        <th onclick="sortTable(this)">Phase / Action</th>
+        <th onclick="sortTable(this)">Step</th>
+        <th onclick="sortTable(this)">Ingest Pipeline</th>
+        <th onclick="sortTable(this)">Docs</th>
+        <th onclick="sortTable(this)">Size (primary)</th>
       </tr>
     </thead>
     <tbody>
@@ -50,22 +59,26 @@
         <td class="lc-mono">{{ row.name }}</td>
         <td><span class="lc-tier-badge lc-tier-{{ row.tier }}">{{ row.tier }}</span></td>
         <td>{{ row.policy or "—" }}</td>
-        <td>{{ row.phase or "—" }}</td>
+        <td>{% if row.phase %}{{ row.phase }}{% if row.action %} / {{ row.action }}{% endif %}{% else %}—{% endif %}</td>
         <td>
           {% if row.step == "ERROR" %}<span class="badge badge-red">ERROR</span>
           {% else %}{{ row.step or "—" }}{% endif %}
         </td>
         <td>{{ row.pipeline or "—" }}</td>
+        <td class="num">{{ row.doc_count_human }}</td>
+        <td class="num">{{ row.store_size }}</td>
       </tr>
       {% endfor %}
       {% if unmanaged_rows %}
-      <tr class="lc-section-header"><td colspan="6">Unmanaged — no ILM policy</td></tr>
+      <tr class="lc-section-header"><td colspan="8">Unmanaged — no ILM policy</td></tr>
       {% for row in unmanaged_rows %}
       <tr>
         <td class="lc-mono">{{ row.name }}</td>
         <td><span class="lc-tier-badge lc-tier-unmanaged">unmanaged</span></td>
         <td>—</td><td>—</td><td>—</td>
         <td>{{ row.pipeline or "—" }}</td>
+        <td class="num">{{ row.doc_count_human }}</td>
+        <td class="num">{{ row.store_size }}</td>
       </tr>
       {% endfor %}
       {% endif %}
@@ -73,20 +86,34 @@
   </table>
 </div>
 
+<!-- Per-policy view -->
 {% if lc.policy_groups %}
 <div class="card">
   <h3>By ILM Policy</h3>
   {% for policy_name, policy_rows in lc.policy_groups.items() %}
-  <details style="margin-bottom: 8px;">
+  <details style="margin-bottom: 10px;">
     <summary style="padding: 8px 4px; font-weight: 600; color: var(--text);">
       {{ policy_name }}
       <span style="color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 8px;">
         {{ policy_rows | length }} {{ "index" if policy_rows | length == 1 else "indices" }}
       </span>
+      {% set dist = lc.policy_phase_dist.get(policy_name, {}) %}
+      {% for tier in lc.tiers %}
+        {% if dist.get(tier) %}
+        <span class="lc-tier-badge lc-tier-{{ tier }}" style="margin-left: 4px;">{{ tier }} {{ dist[tier] }}</span>
+        {% endif %}
+      {% endfor %}
     </summary>
     <table style="margin-top: 8px;">
       <thead>
-        <tr><th>Index</th><th>Phase</th><th>Step</th><th>Pipeline</th></tr>
+        <tr>
+          <th onclick="sortTable(this)">Index</th>
+          <th onclick="sortTable(this)">Phase</th>
+          <th onclick="sortTable(this)">Step</th>
+          <th onclick="sortTable(this)">Pipeline</th>
+          <th onclick="sortTable(this)">Docs</th>
+          <th onclick="sortTable(this)">Size</th>
+        </tr>
       </thead>
       <tbody>
         {% for row in policy_rows %}
@@ -98,10 +125,18 @@
             {% else %}{{ row.step or "—" }}{% endif %}
           </td>
           <td>{{ row.pipeline or "—" }}</td>
+          <td class="num">{{ row.doc_count_human }}</td>
+          <td class="num">{{ row.store_size }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    {% if lc.policy_defs.get(policy_name) %}
+    <details style="margin-top: 8px; margin-left: 14px;">
+      <summary style="color: var(--muted); font-size: 12px; padding: 4px 0;">Policy definition</summary>
+      <pre style="font-size: 11px; color: var(--muted); margin-top: 6px; white-space: pre-wrap; word-break: break-word;">{{ lc.policy_defs[policy_name] | tojson(indent=2) }}</pre>
+    </details>
+    {% endif %}
   </details>
   {% endfor %}
 </div>

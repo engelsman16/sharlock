@@ -95,3 +95,57 @@ rules:
       path: ilm_explain.indices.*.policy
       op: ref_not_in
       ref: ilm_policies
+
+  - id: ilm_paused
+    title: "ILM is paused cluster-wide"
+    severity: warn
+    condition:
+      path: ilm_status.operation_mode
+      op: eq
+      value: "STOPPED"
+
+  - id: high_segment_count
+    title: "Index has > 30 segments (merge pressure)"
+    severity: warn
+    condition:
+      path: indices_stats.indices.*.primaries.segments.count
+      op: gt
+      value: 30
+
+  - id: bulk_rejections
+    title: "Bulk thread pool rejections on one or more nodes"
+    severity: critical
+    condition:
+      path: nodes_stats.nodes.*.thread_pool.bulk.rejected
+      op: gt
+      value: 0
+
+  - id: ingest_failures
+    title: "Ingest pipeline failures on one or more nodes"
+    severity: warn
+    condition:
+      path: nodes_stats.nodes.*.ingest.total.failed
+      op: gt
+      value: 0
+
+  - id: fielddata_evictions
+    title: "Fielddata evictions detected — possible heap pressure"
+    severity: warn
+    condition:
+      path: fielddata_stats.nodes.*.indices.fielddata.evictions
+      op: gt
+      value: 0
+
+  - id: dangling_indices
+    title: "Dangling indices present on cluster"
+    severity: info
+    condition:
+      path: dangling_indices.dangling_indices
+      op: exists
+
+  - id: deprecation_warnings
+    title: "Deprecation warnings present — review before upgrading"
+    severity: info
+    condition:
+      path: deprecation_info.index_settings
+      op: exists
