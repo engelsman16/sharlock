@@ -1,5 +1,86 @@
 <h2>Data Metrics</h2>
 
+<!-- Data Type Size Over Time -->
+<div class="card">
+  <h3 style="margin-bottom:14px;">Data Type Size Over Time <span style="font-size:12px;font-weight:400;color:var(--muted);">— last 30 days</span></h3>
+  {% if data_growth.has_data %}
+  <div style="position:relative; height:280px;">
+    <canvas id="growthChart"></canvas>
+  </div>
+  <script>
+  window._initGrowthChart = function() {
+    if (!window.Chart) return;
+    const allDates  = {{ data_growth.dates | tojson }};
+    const allSeries = {{ data_growth.series | tojson }};
+    const colors    = {{ data_growth.colors | tojson }};
+    const types     = {{ data_growth.types | tojson }};
+
+    function bytesLabel(v) {
+      if (v >= 1099511627776) return (v/1099511627776).toFixed(1)+' TB';
+      if (v >= 1073741824)    return (v/1073741824).toFixed(1)+' GB';
+      if (v >= 1048576)       return (v/1048576).toFixed(1)+' MB';
+      if (v >= 1024)          return (v/1024).toFixed(1)+' KB';
+      return v+' B';
+    }
+
+    let dates = allDates;
+    let series = allSeries;
+    if (dates.length > 0) {
+      const cutoff = new Date(dates[dates.length - 1]);
+      cutoff.setDate(cutoff.getDate() - 29);
+      const cutStr = cutoff.toISOString().slice(0, 10);
+      const startIdx = dates.findIndex(d => d >= cutStr);
+      if (startIdx > 0) {
+        dates = dates.slice(startIdx);
+        series = {};
+        for (const t of types) series[t] = allSeries[t].slice(startIdx);
+      }
+    }
+
+    const datasets = types.map((t, i) => ({
+      label: t,
+      data: series[t] || [],
+      backgroundColor: colors[i] + 'cc',
+      borderColor: colors[i],
+      borderWidth: 1,
+      stack: 'total',
+    }));
+
+    new Chart(document.getElementById('growthChart'), {
+      type: 'bar',
+      data: { labels: dates, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#dfe5ef', boxWidth: 12, padding: 16 } },
+          tooltip: {
+            callbacks: {
+              label: item => ' ' + item.dataset.label + ': ' + bytesLabel(item.parsed.y)
+            }
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+            ticks: { color: '#98a2b3', maxTicksLimit: 12, maxRotation: 45 },
+            grid: { color: '#343741' }
+          },
+          y: {
+            stacked: true,
+            ticks: { color: '#98a2b3', callback: v => bytesLabel(v) },
+            grid: { color: '#343741' }
+          }
+        }
+      }
+    });
+  };
+  </script>
+  {% else %}
+  <p class="na-text">No data stream indices (logs-*, metrics-*, apm-*, traces-*) found in indices_stats.json.</p>
+  {% endif %}
+</div>
+
 {% set m = metrics %}
 
 <!-- 2a: Index Size Overview -->

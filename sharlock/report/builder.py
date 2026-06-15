@@ -1,12 +1,44 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sharlock.rules.engine import Finding
 
 _TIERS = ["hot", "warm", "cold", "frozen", "unmanaged"]
+
+_TYPE_ORDER = ["APM", "Logs", "Metrics", "Synthetics"]
+_TYPE_COLORS = {
+    "APM":        "#f3d371",
+    "Logs":       "#1ba9f5",
+    "Metrics":    "#7de2d1",
+    "Synthetics": "#f86b63",
+}
+
+
+def _classify_index(name: str) -> str | None:
+    clean = re.sub(r"^\.ds-", "", name)
+    if re.match(r"(logs[-.])", clean):
+        return "Logs"
+    if re.match(r"(metrics[-.])", clean):
+        return "Metrics"
+    if re.match(r"(traces[-.]|apm[-.])", clean):
+        return "APM"
+    if re.match(r"(synthetics[-.])", clean):
+        return "Synthetics"
+    return None
+
+
+def _extract_date(name: str) -> str | None:
+    m = re.search(r"(\d{4})\.(\d{2})\.(\d{2})", name)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    m = re.search(r"(\d{4})\.(\d{2})(?![\.\d])", name)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-01"
+    return None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -413,6 +445,51 @@ def build_metrics_context(parsed: dict) -> dict:
     }
 
 
+# ── Data growth context ───────────────────────────────────────────────────────
+
+def build_data_growth_context(parsed: dict) -> dict:
+    """Build size-by-date-by-type data from index names and stats for chart rendering."""
+    indices_stats = parsed.get("indices_stats") or {}
+    stats_by_index: dict = (indices_stats.get("indices") or {}) if isinstance(indices_stats, dict) else {}
+
+    by_date: dict[str, dict[str, int]] = {}
+    types_seen: set[str] = set()
+
+    for name, stats in stats_by_index.items():
+        dtype = _classify_index(name)
+        if dtype is None:
+            continue
+        date = _extract_date(name)
+        if date is None:
+            continue
+        store_bytes = ((stats.get("primaries") or {}).get("store") or {}).get("size_in_bytes", 0) or 0
+        if store_bytes == 0:
+            continue
+        types_seen.add(dtype)
+        day = by_date.setdefault(date, {})
+        day[dtype] = day.get(dtype, 0) + store_bytes
+
+    if not by_date:
+        return {"has_data": False}
+
+    sorted_dates = sorted(by_date.keys())
+    sorted_types = sorted(types_seen, key=lambda t: _TYPE_ORDER.index(t) if t in _TYPE_ORDER else 99)
+
+    series: dict[str, list[int]] = {
+        dtype: [by_date[d].get(dtype, 0) for d in sorted_dates]
+        for dtype in sorted_types
+    }
+    colors = [_TYPE_COLORS.get(t, "#98a2b3") for t in sorted_types]
+
+    return {
+        "has_data": True,
+        "dates": sorted_dates,
+        "series": series,
+        "colors": colors,
+        "types": sorted_types,
+    }
+
+
 # ── Main context builder ──────────────────────────────────────────────────────
 
 def build_context(parsed: dict, findings: list[Finding]) -> dict:
@@ -456,4 +533,5 @@ def build_context(parsed: dict, findings: list[Finding]) -> dict:
         "raw_files": raw_files,
         "lifecycle": build_lifecycle_context(parsed),
         "metrics": build_metrics_context(parsed),
+        "data_growth": build_data_growth_context(parsed),
     }

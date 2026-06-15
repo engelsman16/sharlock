@@ -377,7 +377,9 @@
     background: var(--accent);
     border-radius: 2px;
   }
+
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -438,11 +440,16 @@
 </main>
 
 <script>
+let _growthChartInited = false;
 function show(tab) {
   document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   document.getElementById('nav-' + tab).classList.add('active');
+  if (tab === 'metrics' && !_growthChartInited && window._initGrowthChart) {
+    _growthChartInited = true;
+    window._initGrowthChart();
+  }
 }
 
 function sortTable(th) {

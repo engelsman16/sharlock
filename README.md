@@ -18,7 +18,7 @@ Parses a ZIP produced by [elastic/support-diagnostics](https://github.com/elasti
 | Summary | Cluster name, status, version, node count, shard counts, issue summary |
 | Issues | Detected problems grouped by severity (critical / warn / info) |
 | Data Lifecycle | ILM tier swimlane (hot → warm → cold → frozen → unmanaged), per-index table, per-policy breakdown |
-| Data Metrics | Index sizes, ingestion throughput, shard distribution, ingest pipeline map, active recoveries, fielddata usage, segment detail |
+| Data Metrics | Data type size chart (Logs / Metrics / APM / Synthetics over time, 30-day window), index sizes, ingestion throughput, shard distribution, ingest pipeline map, active recoveries, fielddata usage, segment detail |
 | Raw Data | Collapsible JSON browser for every parsed file |
 
 ---
@@ -77,7 +77,7 @@ Rules live in [`rules/default.yaml`](rules/default.yaml) — plain YAML, no Pyth
 ## Development
 
 ```bash
-uv run pytest        # 81 tests
+uv run pytest        # 88 tests
 uv run ruff check .  # lint
 ```
 
