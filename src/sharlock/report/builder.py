@@ -6,6 +6,79 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from sharlock.rules.engine import Finding
 
+_TIERS = ["hot", "warm", "cold", "frozen", "unmanaged"]
+
+
+def _index_pipeline(idx_data: dict) -> str | None:
+    """Extract ingest pipeline from an index settings dict. Returns None if absent or _none."""
+    if not isinstance(idx_data, dict):
+        return None
+    settings = idx_data.get("settings") or {}
+    idx_settings = (settings.get("index") or {}) if isinstance(settings, dict) else {}
+    candidates = [
+        idx_settings.get("default_pipeline") if isinstance(idx_settings, dict) else None,
+        idx_settings.get("final_pipeline") if isinstance(idx_settings, dict) else None,
+        settings.get("default_pipeline") if isinstance(settings, dict) else None,
+        settings.get("final_pipeline") if isinstance(settings, dict) else None,
+        idx_data.get("default_pipeline"),
+        idx_data.get("final_pipeline"),
+    ]
+    return next((v for v in candidates if v and v != "_none"), None)
+
+
+def build_lifecycle_context(parsed: dict) -> dict:
+    """Build the Data Lifecycle section context from ILM and index data."""
+    ilm_explain = parsed.get("ilm_explain") or {}
+    indices_raw = parsed.get("indices")
+
+    ilm_indices: dict = ilm_explain.get("indices") or {} if isinstance(ilm_explain, dict) else {}
+
+    # Support both _settings dict format and _cat/indices list format
+    indices_settings: dict = {}
+    if isinstance(indices_raw, dict):
+        indices_settings = indices_raw
+    elif isinstance(indices_raw, list):
+        for item in indices_raw:
+            if isinstance(item, dict) and "index" in item:
+                indices_settings[item["index"]] = item
+
+    all_names = sorted(set(ilm_indices.keys()) | set(indices_settings.keys()))
+
+    rows: list[dict] = []
+    tier_buckets: dict[str, list[str]] = {t: [] for t in _TIERS}
+    policy_groups: dict[str, list[dict]] = {}
+
+    for name in all_names:
+        ilm_info = ilm_indices.get(name) or {}
+        managed = bool(ilm_info.get("managed", False))
+        phase = ilm_info.get("phase", "") if managed else ""
+        policy = ilm_info.get("policy", "") if managed else ""
+        step = ilm_info.get("step", "") if managed else ""
+        tier = phase if phase in ("hot", "warm", "cold", "frozen") else "unmanaged"
+        pipeline = _index_pipeline(indices_settings.get(name) or {})
+
+        row: dict = {
+            "name": name,
+            "tier": tier,
+            "policy": policy or None,
+            "phase": phase or None,
+            "step": step or None,
+            "pipeline": pipeline,
+            "managed": managed,
+        }
+        rows.append(row)
+        tier_buckets[tier].append(name)
+        if policy:
+            policy_groups.setdefault(policy, []).append(row)
+
+    return {
+        "tier_buckets": tier_buckets,
+        "tiers": _TIERS,
+        "rows": rows,
+        "policy_groups": policy_groups,
+        "has_data": bool(rows),
+    }
+
 
 def build_context(parsed: dict, findings: list[Finding]) -> dict:
     """Shape parsed data + findings into a context dict for Jinja2 templates."""
@@ -46,4 +119,5 @@ def build_context(parsed: dict, findings: list[Finding]) -> dict:
         "findings": by_severity,
         "finding_count": len(findings),
         "raw_files": raw_files,
+        "lifecycle": build_lifecycle_context(parsed),
     }

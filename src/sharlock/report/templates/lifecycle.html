@@ -1,0 +1,110 @@
+<h2>Data Lifecycle</h2>
+
+{% set lc = lifecycle %}
+{% if not lc.has_data %}
+<div class="empty-state">
+  <span class="icon">📊</span>
+  No ILM or index data available in this diagnostic bundle.
+</div>
+{% else %}
+
+<div class="card">
+  <h3>Tier Flow</h3>
+  <div class="lc-swimlane">
+    {% for tier in lc.tiers %}
+    <div class="lc-lane">
+      <div class="lc-lane-header lc-tier-{{ tier }}">{{ tier | capitalize }}</div>
+      <div class="lc-lane-body">
+        {% if lc.tier_buckets[tier] %}
+          {% for idx in lc.tier_buckets[tier] %}
+          <div class="lc-index-card">{{ idx }}</div>
+          {% endfor %}
+        {% else %}
+          <div class="lc-empty-lane">—</div>
+        {% endif %}
+      </div>
+    </div>
+    {% if not loop.last %}<div class="lc-arrow">→</div>{% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <h3>Index Overview</h3>
+  {% set managed_rows = lc.rows | selectattr("managed") | list %}
+  {% set unmanaged_rows = lc.rows | rejectattr("managed") | list %}
+  <table>
+    <thead>
+      <tr>
+        <th>Index</th>
+        <th>Tier</th>
+        <th>ILM Policy</th>
+        <th>Phase</th>
+        <th>Step</th>
+        <th>Ingest Pipeline</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in managed_rows %}
+      <tr>
+        <td class="lc-mono">{{ row.name }}</td>
+        <td><span class="lc-tier-badge lc-tier-{{ row.tier }}">{{ row.tier }}</span></td>
+        <td>{{ row.policy or "—" }}</td>
+        <td>{{ row.phase or "—" }}</td>
+        <td>
+          {% if row.step == "ERROR" %}<span class="badge badge-red">ERROR</span>
+          {% else %}{{ row.step or "—" }}{% endif %}
+        </td>
+        <td>{{ row.pipeline or "—" }}</td>
+      </tr>
+      {% endfor %}
+      {% if unmanaged_rows %}
+      <tr class="lc-section-header"><td colspan="6">Unmanaged — no ILM policy</td></tr>
+      {% for row in unmanaged_rows %}
+      <tr>
+        <td class="lc-mono">{{ row.name }}</td>
+        <td><span class="lc-tier-badge lc-tier-unmanaged">unmanaged</span></td>
+        <td>—</td><td>—</td><td>—</td>
+        <td>{{ row.pipeline or "—" }}</td>
+      </tr>
+      {% endfor %}
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+{% if lc.policy_groups %}
+<div class="card">
+  <h3>By ILM Policy</h3>
+  {% for policy_name, policy_rows in lc.policy_groups.items() %}
+  <details style="margin-bottom: 8px;">
+    <summary style="padding: 8px 4px; font-weight: 600; color: var(--text);">
+      {{ policy_name }}
+      <span style="color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 8px;">
+        {{ policy_rows | length }} {{ "index" if policy_rows | length == 1 else "indices" }}
+      </span>
+    </summary>
+    <table style="margin-top: 8px;">
+      <thead>
+        <tr><th>Index</th><th>Phase</th><th>Step</th><th>Pipeline</th></tr>
+      </thead>
+      <tbody>
+        {% for row in policy_rows %}
+        <tr>
+          <td class="lc-mono">{{ row.name }}</td>
+          <td>{{ row.phase or "—" }}</td>
+          <td>
+            {% if row.step == "ERROR" %}<span class="badge badge-red">ERROR</span>
+            {% else %}{{ row.step or "—" }}{% endif %}
+          </td>
+          <td>{{ row.pipeline or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endif %}

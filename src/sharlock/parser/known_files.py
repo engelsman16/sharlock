@@ -22,4 +22,6 @@ KNOWN: dict[str, str] = {
     "index_template.json": "index_templates",
     "pipeline.json": "pipelines",
     "tasks.json": "tasks",
+    "data_stream.json": "data_streams",
+    "ilm_policy.json": "ilm_policies",
 }

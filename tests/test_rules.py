@@ -111,3 +111,73 @@ def test_default_rules_yaml_is_valid():
         assert "condition" in rule
         assert "path" in rule["condition"]
         assert "op" in rule["condition"]
+
+
+def test_ilm_step_error_fires():
+    data = {
+        "ilm_explain": {
+            "indices": {
+                "my-index": {"managed": True, "policy": "p", "phase": "hot", "step": "ERROR"}
+            }
+        }
+    }
+    found = _eval(data)
+    assert "ilm_step_error" in found
+    assert found["ilm_step_error"].severity == "critical"
+
+
+def test_ilm_step_error_does_not_fire_on_clean_step():
+    data = {
+        "ilm_explain": {
+            "indices": {
+                "my-index": {"managed": True, "policy": "p", "phase": "hot", "step": "check-rollover-ready"}
+            }
+        }
+    }
+    found = _eval(data)
+    assert "ilm_step_error" not in found
+
+
+def test_ilm_policy_missing_fires():
+    data = {
+        "ilm_explain": {
+            "indices": {
+                "my-index": {"managed": True, "policy": "ghost-policy", "phase": "hot", "step": "complete"}
+            }
+        },
+        "ilm_policies": {
+            "real-policy": {"version": 1}
+        },
+    }
+    found = _eval(data)
+    assert "ilm_policy_missing" in found
+    assert found["ilm_policy_missing"].severity == "warn"
+    assert "ghost-policy" in found["ilm_policy_missing"].detail
+
+
+def test_ilm_policy_missing_does_not_fire_when_policy_present():
+    data = {
+        "ilm_explain": {
+            "indices": {
+                "my-index": {"managed": True, "policy": "real-policy", "phase": "hot", "step": "complete"}
+            }
+        },
+        "ilm_policies": {
+            "real-policy": {"version": 1}
+        },
+    }
+    found = _eval(data)
+    assert "ilm_policy_missing" not in found
+
+
+def test_ilm_policy_missing_no_fire_without_ilm_policies():
+    data = {
+        "ilm_explain": {
+            "indices": {
+                "my-index": {"managed": True, "policy": "some-policy", "phase": "hot", "step": "complete"}
+            }
+        }
+    }
+    # ilm_policies absent from data → ref_data is {} → all policies "missing"
+    found = _eval(data)
+    assert "ilm_policy_missing" in found

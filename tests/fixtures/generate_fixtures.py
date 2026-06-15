@@ -289,7 +289,49 @@ ENTRIES: dict[str, bytes] = {
         }
     }),
     "ilm_explain.json": _j({
-        "indices": {}
+        "indices": {
+            "logs-2024.01.15": {
+                "index": "logs-2024.01.15",
+                "managed": True,
+                "policy": "logs-policy",
+                "phase": "hot",
+                "action": "rollover",
+                "step": "check-rollover-ready",
+            },
+            "metrics-2024.01.15": {
+                "index": "metrics-2024.01.15",
+                "managed": True,
+                "policy": "metrics-policy",
+                "phase": "warm",
+                "action": "shrink",
+                "step": "shrink",
+            },
+        }
+    }),
+    "ilm_policy.json": _j({
+        "logs-policy": {
+            "version": 1,
+            "policy": {
+                "phases": {
+                    "hot": {"actions": {"rollover": {"max_age": "30d"}}},
+                    "warm": {"actions": {"shrink": {"number_of_shards": 1}}},
+                    "delete": {"min_age": "90d", "actions": {"delete": {}}},
+                }
+            },
+        },
+        "metrics-policy": {
+            "version": 1,
+            "policy": {
+                "phases": {
+                    "hot": {"actions": {"rollover": {"max_age": "7d"}}},
+                    "warm": {"actions": {"shrink": {"number_of_shards": 1}}},
+                    "cold": {"min_age": "30d", "actions": {"freeze": {}}},
+                }
+            },
+        },
+    }),
+    "data_stream.json": _j({
+        "data_streams": []
     }),
     "template.json": _j([]),
     "component_template.json": _j({"component_templates": []}),

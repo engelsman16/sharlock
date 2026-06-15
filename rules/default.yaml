@@ -79,3 +79,19 @@ rules:
       path: cluster_health.timed_out
       op: eq
       value: true
+
+  - id: ilm_step_error
+    title: "Index stuck in ILM ERROR step"
+    severity: critical
+    condition:
+      path: ilm_explain.indices.*.step
+      op: eq
+      value: "ERROR"
+
+  - id: ilm_policy_missing
+    title: "ILM policy referenced but not defined"
+    severity: warn
+    condition:
+      path: ilm_explain.indices.*.policy
+      op: ref_not_in
+      ref: ilm_policies
