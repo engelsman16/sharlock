@@ -1,0 +1,81 @@
+# Sharlock default detection rules
+# Schema:
+#   id:       snake_case unique identifier
+#   title:    human label shown in report
+#   severity: info | warn | critical
+#   condition:
+#     path:   dot-separated path into parsed data; * expands over dict keys
+#     op:     gt | lt | gte | lte | eq | neq | exists | not_exists
+#     value:  compared against resolved path value(s) (omit for exists/not_exists)
+
+rules:
+  - id: red_cluster
+    title: "Cluster status is RED"
+    severity: critical
+    condition:
+      path: cluster_health.status
+      op: eq
+      value: "red"
+
+  - id: yellow_cluster
+    title: "Cluster status is YELLOW"
+    severity: warn
+    condition:
+      path: cluster_health.status
+      op: eq
+      value: "yellow"
+
+  - id: unassigned_shards
+    title: "Unassigned shards detected"
+    severity: warn
+    condition:
+      path: cluster_health.unassigned_shards
+      op: gt
+      value: 0
+
+  - id: high_heap
+    title: "JVM heap usage > 85% on one or more nodes"
+    severity: warn
+    condition:
+      path: nodes_stats.nodes.*.jvm.mem.heap_used_percent
+      op: gt
+      value: 85
+
+  - id: disk_low
+    title: "Available disk < 10 GB on one or more nodes"
+    severity: critical
+    condition:
+      path: nodes_stats.nodes.*.fs.total.available_in_bytes
+      op: lt
+      value: 10737418240
+
+  - id: pending_tasks
+    title: "Cluster has pending tasks"
+    severity: info
+    condition:
+      path: pending_tasks.tasks
+      op: exists
+
+  - id: write_threadpool_rejections
+    title: "Write thread pool rejections detected on one or more nodes"
+    severity: warn
+    condition:
+      path: nodes_stats.nodes.*.thread_pool.write.rejected
+      op: gt
+      value: 0
+
+  - id: search_threadpool_rejections
+    title: "Search thread pool rejections detected on one or more nodes"
+    severity: warn
+    condition:
+      path: nodes_stats.nodes.*.thread_pool.search.rejected
+      op: gt
+      value: 0
+
+  - id: timed_out_cluster_health
+    title: "Cluster health check timed out"
+    severity: warn
+    condition:
+      path: cluster_health.timed_out
+      op: eq
+      value: true

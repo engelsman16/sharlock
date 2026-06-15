@@ -1,0 +1,37 @@
+[project]
+name = "sharlock"
+version = "0.1.0"
+description = "Elasticsearch diagnostic analyzer — parse support-diagnostics ZIPs and render HTML reports"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+sharlock = "sharlock.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sharlock"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "httpx>=0.27",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

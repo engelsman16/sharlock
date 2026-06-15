@@ -1,0 +1,45 @@
+<h2>Raw Data Browser</h2>
+
+{% if raw_files %}
+  {% for file in raw_files %}
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <details>
+      <summary style="padding: 14px 20px; font-weight: 500; background: var(--surface);">
+        {{ file.key }}
+      </summary>
+      <div style="padding: 16px 20px; overflow-x: auto; background: #0d1117;">
+        <pre class="json-tree" id="tree-{{ loop.index }}">{{ file.data_json | e }}</pre>
+      </div>
+    </details>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="card">
+    <div class="empty-state">
+      <span class="icon">📂</span>
+      No parsed files available.
+    </div>
+  </div>
+{% endif %}
+
+<script>
+(function () {
+  function colorize(pre) {
+    const json = pre.textContent;
+    const html = json
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+        function (match) {
+          if (/^"/.test(match)) {
+            if (/:$/.test(match)) return '<span class="json-key">' + match + '</span>';
+            return '<span class="json-string">' + match + '</span>';
+          }
+          if (/true|false/.test(match)) return '<span class="json-bool">' + match + '</span>';
+          if (/null/.test(match)) return '<span class="json-null">' + match + '</span>';
+          return '<span class="json-number">' + match + '</span>';
+        });
+    pre.innerHTML = html;
+  }
+  document.querySelectorAll('.json-tree').forEach(colorize);
+})();
+</script>

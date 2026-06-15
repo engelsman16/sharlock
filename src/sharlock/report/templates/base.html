@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sharlock — {{ cluster_name }}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2d3047;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --accent: #4f8ef7;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --sidebar-w: 220px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── Sidebar ──────────────────────────────────── */
+  nav {
+    width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .nav-logo {
+    padding: 0 20px 24px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+
+  .nav-logo span { color: var(--muted); font-weight: 400; font-size: 12px; display: block; margin-top: 2px; }
+
+  nav a {
+    display: block;
+    padding: 9px 20px;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  nav a:hover, nav a.active {
+    color: var(--text);
+    background: rgba(79, 142, 247, 0.08);
+    border-left-color: var(--accent);
+  }
+
+  .nav-badge {
+    float: right;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 99px;
+    background: var(--red);
+    color: #fff;
+  }
+
+  .nav-badge.warn { background: var(--yellow); color: #000; }
+  .nav-badge.info { background: var(--accent); }
+  .nav-badge.ok { background: var(--green); }
+
+  /* ── Main ────────────────────────────────────── */
+  main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    padding: 32px 40px;
+    max-width: 960px;
+  }
+
+  /* ── Tabs ────────────────────────────────────── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Cards / Tables ──────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  h2 { font-size: 18px; margin-bottom: 16px; }
+  h3 { font-size: 14px; color: var(--muted); text-transform: uppercase;
+       letter-spacing: 0.05em; margin-bottom: 12px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* ── Status badges ───────────────────────────── */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .badge-green { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+  .badge-yellow { background: rgba(234,179,8,.15); color: var(--yellow); border: 1px solid rgba(234,179,8,.3); }
+  .badge-red { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
+  .badge-gray { background: rgba(136,146,164,.15); color: var(--muted); border: 1px solid rgba(136,146,164,.3); }
+
+  /* ── JSON tree ───────────────────────────────── */
+  .json-tree { font-family: "SF Mono", "Fira Code", monospace; font-size: 12px; line-height: 1.6; }
+  .json-key { color: #79c0ff; }
+  .json-string { color: #a8ff78; }
+  .json-number { color: #f8c555; }
+  .json-bool { color: #ff7b72; }
+  .json-null { color: var(--muted); }
+
+  details > summary { cursor: pointer; user-select: none; list-style: none; }
+  details > summary::before { content: "▶ "; font-size: 10px; color: var(--muted); }
+  details[open] > summary::before { content: "▼ "; }
+  details { padding-left: 14px; border-left: 1px solid var(--border); margin-left: 4px; }
+
+  .empty-state { color: var(--muted); text-align: center; padding: 48px 0; }
+  .empty-state .icon { font-size: 32px; display: block; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    Sharlock
+    <span>{{ cluster_name }}</span>
+  </div>
+  <a href="#" onclick="show('summary'); return false;" class="active" id="nav-summary">Summary</a>
+  <a href="#" onclick="show('issues'); return false;" id="nav-issues">
+    Issues
+    {% set crit = findings.critical | length %}
+    {% set warn = findings.warn | length %}
+    {% if crit > 0 %}
+      <span class="nav-badge">{{ crit }}</span>
+    {% elif warn > 0 %}
+      <span class="nav-badge warn">{{ warn }}</span>
+    {% else %}
+      <span class="nav-badge ok">✓</span>
+    {% endif %}
+  </a>
+  <a href="#" onclick="show('browser'); return false;" id="nav-browser">Raw Data</a>
+</nav>
+
+<main>
+  <div id="tab-summary" class="tab-panel active">
+    {% include "summary.html" %}
+  </div>
+  <div id="tab-issues" class="tab-panel">
+    {% include "issues.html" %}
+  </div>
+  <div id="tab-browser" class="tab-panel">
+    {% include "browser.html" %}
+  </div>
+</main>
+
+<script>
+function show(tab) {
+  document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+"""Map of bare filenames → semantic keys used by rules engine and report builder."""
+
+KNOWN: dict[str, str] = {
+    "cluster_health.json": "cluster_health",
+    "nodes_stats.json": "nodes_stats",
+    "nodes_info.json": "nodes_info",
+    "nodes.json": "nodes",
+    "indices_stats.json": "indices_stats",
+    "indices.json": "indices",
+    "cluster_settings.json": "cluster_settings",
+    "cluster_state.json": "cluster_state",
+    "pending_tasks.json": "pending_tasks",
+    "shards.json": "shards",
+    "recovery.json": "recovery",
+    "allocation.json": "allocation",
+    "master.json": "master",
+    "version.json": "version",
+    "plugins.json": "plugins",
+    "ilm_explain.json": "ilm_explain",
+    "template.json": "templates",
+    "component_template.json": "component_templates",
+    "index_template.json": "index_templates",
+    "pipeline.json": "pipelines",
+    "tasks.json": "tasks",
+}

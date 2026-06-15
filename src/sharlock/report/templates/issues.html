@@ -1,0 +1,75 @@
+<h2>Issues</h2>
+
+{% set total = (findings.critical | length) + (findings.warn | length) + (findings.info | length) %}
+
+{% if total == 0 %}
+<div class="card">
+  <div class="empty-state">
+    <span class="icon">✓</span>
+    No issues detected — cluster looks healthy.
+  </div>
+</div>
+
+{% else %}
+
+{% if findings.critical %}
+<div class="card" style="border-color: rgba(239,68,68,.4);">
+  <h3 style="color: var(--red)">Critical ({{ findings.critical | length }})</h3>
+  <table>
+    <thead>
+      <tr><th>Rule</th><th>Description</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+      {% for f in findings.critical %}
+      <tr>
+        <td><code>{{ f.id }}</code></td>
+        <td>{{ f.title }}</td>
+        <td style="color: var(--muted); font-size: 12px;">{{ f.detail }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if findings.warn %}
+<div class="card" style="border-color: rgba(234,179,8,.3);">
+  <h3 style="color: var(--yellow)">Warn ({{ findings.warn | length }})</h3>
+  <table>
+    <thead>
+      <tr><th>Rule</th><th>Description</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+      {% for f in findings.warn %}
+      <tr>
+        <td><code>{{ f.id }}</code></td>
+        <td>{{ f.title }}</td>
+        <td style="color: var(--muted); font-size: 12px;">{{ f.detail }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if findings.info %}
+<div class="card" style="border-color: rgba(79,142,247,.3);">
+  <h3 style="color: var(--accent)">Info ({{ findings.info | length }})</h3>
+  <table>
+    <thead>
+      <tr><th>Rule</th><th>Description</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+      {% for f in findings.info %}
+      <tr>
+        <td><code>{{ f.id }}</code></td>
+        <td>{{ f.title }}</td>
+        <td style="color: var(--muted); font-size: 12px;">{{ f.detail }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endif %}

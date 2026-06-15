@@ -1,0 +1,72 @@
+<h2>Cluster Summary</h2>
+
+<div class="card">
+  <table>
+    <tr>
+      <th>Cluster</th>
+      <td>{{ cluster_name }}</td>
+    </tr>
+    <tr>
+      <th>Status</th>
+      <td>
+        {% if cluster_status == "green" %}
+          <span class="badge badge-green">green</span>
+        {% elif cluster_status == "yellow" %}
+          <span class="badge badge-yellow">yellow</span>
+        {% elif cluster_status == "red" %}
+          <span class="badge badge-red">red</span>
+        {% else %}
+          <span class="badge badge-gray">{{ cluster_status }}</span>
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <th>Version</th>
+      <td>{{ es_version }}</td>
+    </tr>
+    <tr>
+      <th>Nodes</th>
+      <td>{{ node_count }}</td>
+    </tr>
+    <tr>
+      <th>Active shards</th>
+      <td>{{ active_shards }}</td>
+    </tr>
+    <tr>
+      <th>Unassigned shards</th>
+      <td>
+        {% if unassigned_shards > 0 %}
+          <span style="color: var(--yellow)">{{ unassigned_shards }}</span>
+        {% else %}
+          0
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <th>Issues detected</th>
+      <td>
+        {% if finding_count == 0 %}
+          <span style="color: var(--green)">None</span>
+        {% else %}
+          {{ findings.critical | length }} critical,
+          {{ findings.warn | length }} warn,
+          {{ findings.info | length }} info
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+</div>
+
+{% if findings.critical %}
+<div class="card" style="border-color: rgba(239,68,68,.4);">
+  <h3 style="color: var(--red)">Critical issues</h3>
+  <table>
+    {% for f in findings.critical %}
+    <tr>
+      <td><strong>{{ f.title }}</strong></td>
+      <td style="color: var(--muted)">{{ f.detail }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
