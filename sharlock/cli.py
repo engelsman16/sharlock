@@ -32,7 +32,11 @@ def main() -> None:
 
     out = args.output or args.diag_zip.with_name(args.diag_zip.stem + "_report.html")
 
-    raw = read_zip(args.diag_zip)
+    try:
+        raw = read_zip(args.diag_zip)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     parsed: dict = {}
     for filename, data in raw.items():
@@ -41,9 +45,19 @@ def main() -> None:
             if result is not None:
                 parsed[KNOWN[filename]] = result
 
-    findings = evaluate(parsed, rules_path=args.rules)
+    try:
+        findings = evaluate(parsed, rules_path=args.rules)
+    except (OSError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     context = build_context(parsed, findings)
-    render(context, out)
+
+    try:
+        render(context, out)
+    except (OSError, FileNotFoundError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     crit = len(context["findings"]["critical"])
     warn = len(context["findings"]["warn"])
