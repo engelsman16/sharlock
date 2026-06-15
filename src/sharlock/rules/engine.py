@@ -10,7 +10,7 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-_OPS = {"gt", "lt", "gte", "lte", "eq", "neq", "exists", "not_exists"}
+_OPS = {"gt", "lt", "gte", "lte", "eq", "neq", "exists", "not_exists", "ref_not_in"}
 
 
 @dataclass
@@ -101,8 +101,13 @@ def evaluate(data: dict, rules_path: Path | None = None) -> list[Finding]:
         if not values:
             continue
 
-        threshold = cond.get("value")
-        matched = _matches(values, op, threshold)
+        if op == "ref_not_in":
+            ref_key = cond.get("ref", "")
+            ref_data = data.get(ref_key) or {}
+            matched = [v for v in values if isinstance(v, str) and v and v not in ref_data]
+        else:
+            threshold = cond.get("value")
+            matched = _matches(values, op, threshold)
         if not matched:
             continue
 
