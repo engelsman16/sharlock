@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import yaml
 
 from sharlock.rules.engine import Finding, evaluate
@@ -300,3 +301,40 @@ def test_deprecation_warnings_fires():
     found = _eval(data)
     assert "deprecation_warnings" in found
     assert found["deprecation_warnings"].severity == "info"
+
+
+# ── Error handling ────────────────────────────────────────────────────────────
+
+def test_evaluate_nonexistent_rules_file_raises(tmp_path):
+    with pytest.raises(OSError):
+        evaluate({}, rules_path=tmp_path / "nonexistent.yaml")
+
+
+def test_evaluate_invalid_yaml_raises(tmp_path):
+    bad_yaml = tmp_path / "bad.yaml"
+    bad_yaml.write_text("rules:\n  - id: [unclosed\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="valid YAML"):
+        evaluate({}, rules_path=bad_yaml)
+
+
+def test_evaluate_malformed_rule_skipped(tmp_path, caplog):
+    import logging
+
+    rules_yaml = tmp_path / "rules.yaml"
+    rules_yaml.write_text(
+        "rules:\n"
+        "  - title: 'No id or condition'\n"
+        "  - id: red_cluster\n"
+        "    title: 'Red Cluster'\n"
+        "    severity: critical\n"
+        "    condition:\n"
+        "      path: cluster_health.status\n"
+        "      op: eq\n"
+        "      value: red\n",
+        encoding="utf-8",
+    )
+    data = {"cluster_health": {"status": "red"}}
+    with caplog.at_level(logging.WARNING, logger="sharlock.rules.engine"):
+        findings = evaluate(data, rules_path=rules_yaml)
+    assert any("Malformed rule" in r.message for r in caplog.records)
+    assert any(f.id == "red_cluster" for f in findings)

@@ -13,12 +13,15 @@ def read_zip(path: str | Path) -> dict[str, bytes]:
         raise ValueError(f"{path} is not a ZIP file")
 
     result: dict[str, bytes] = {}
-    with zipfile.ZipFile(path) as zf:
-        for info in zf.infolist():
-            if info.is_dir():
-                continue
-            parts = info.filename.split("/", 1)
-            name = parts[1] if len(parts) == 2 else parts[0]
-            if name:
-                result[name] = zf.read(info.filename)
+    try:
+        with zipfile.ZipFile(path) as zf:
+            for info in zf.infolist():
+                if info.is_dir():
+                    continue
+                parts = info.filename.split("/", 1)
+                name = parts[1] if len(parts) == 2 else parts[0]
+                if name:
+                    result[name] = zf.read(info.filename)
+    except zipfile.BadZipFile as exc:
+        raise ValueError(f"{path} is corrupt or unreadable: {exc}") from exc
     return result

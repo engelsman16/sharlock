@@ -83,15 +83,24 @@ def evaluate(data: dict, rules_path: Path | None = None) -> list[Finding]:
     if rules_path is None:
         rules_path = _default_rules_path()
 
-    with open(rules_path) as fh:
-        rules_doc = yaml.safe_load(fh) or {}
+    try:
+        with open(rules_path) as fh:
+            rules_doc = yaml.safe_load(fh) or {}
+    except OSError as exc:
+        raise OSError(f"Cannot read rules file {rules_path}: {exc}") from exc
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Rules file {rules_path} is not valid YAML: {exc}") from exc
 
     findings: list[Finding] = []
     for rule in rules_doc.get("rules", []):
-        rid = rule["id"]
-        cond = rule["condition"]
-        path = cond["path"]
-        op = cond["op"]
+        try:
+            rid = rule["id"]
+            cond = rule["condition"]
+            path = cond["path"]
+            op = cond["op"]
+        except (KeyError, TypeError) as exc:
+            logger.warning("Malformed rule skipped: %s", exc)
+            continue
 
         if op not in _OPS:
             logger.warning("Rule %s: unknown op %r — skipped", rid, op)

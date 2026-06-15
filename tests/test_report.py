@@ -665,3 +665,26 @@ def test_render_metrics_section_in_html():
     assert "Ingest Pipeline Map" in content
     assert "my-index" in content
     out.unlink()
+
+
+# ── Error handling ────────────────────────────────────────────────────────────
+
+def test_render_unwritable_path(tmp_path):
+    import os
+    import stat
+    import pytest
+
+    ctx = build_context(_base_parsed(), [])
+    locked_dir = tmp_path / "locked"
+    locked_dir.mkdir()
+    locked_dir.chmod(stat.S_IRUSR | stat.S_IXUSR)
+
+    if os.access(str(locked_dir), os.W_OK):
+        pytest.skip("Running as root or filesystem ignores permissions")
+
+    out = locked_dir / "report.html"
+    try:
+        with pytest.raises(OSError):
+            render(ctx, out)
+    finally:
+        locked_dir.chmod(stat.S_IRWXU)

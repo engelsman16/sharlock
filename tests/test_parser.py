@@ -68,3 +68,21 @@ def test_known_files_covers_fixture_zip():
 def test_known_files_values_are_unique():
     values = list(KNOWN.values())
     assert len(values) == len(set(values)), "Duplicate semantic keys in KNOWN"
+
+
+def test_read_zip_corrupt_zip_raises_value_error(tmp_path):
+    # EOCD with claimed CD at offset 0 — is_zipfile() returns True but ZipFile() raises BadZipFile
+    eocd = (
+        b"PK\x05\x06"          # end of central directory signature
+        + b"\x00\x00"           # disk number
+        + b"\x00\x00"           # disk with start of central directory
+        + b"\x01\x00"           # records on this disk
+        + b"\x01\x00"           # total records
+        + b"\x2c\x00\x00\x00"  # size of central directory (44 bytes)
+        + b"\x00\x00\x00\x00"  # offset of central directory (points at itself)
+        + b"\x00\x00"           # comment length
+    )
+    corrupt = tmp_path / "corrupt.zip"
+    corrupt.write_bytes(eocd)
+    with pytest.raises(ValueError, match="corrupt"):
+        read_zip(corrupt)
